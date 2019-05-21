@@ -1,0 +1,133 @@
+local C = require("main.constants")
+
+local function make_hud(self,players)
+
+	local portraits = {}
+		
+	local padding = 12
+	local end_x   = padding
+	local start_x = -128
+	local step    = 12
+	local start_y = padding
+	
+	for k,v in pairs(players) do
+		local id          = #players - (k-1)
+		local offset_head = (k-1) * step + (k-1) * padding*0.5
+		local pos_head    = vmath.vector3(start_x, start_y + offset_head, 0)
+		local pos_frame   = vmath.vector3(start_x + padding + 16, start_y + offset_head, 0)
+		local pos_score   = pos_frame + vmath.vector3(padding + 10, -1, 0)
+
+		local node_head  = gui.new_box_node(pos_head, vmath.vector3(16,16,1))
+		local node_frame = gui.new_box_node(pos_frame, vmath.vector3(32,16,1))
+		local node_bar   = gui.new_box_node(vmath.vector3(1,0,0), vmath.vector3(30,16,1))
+
+		local node_score = gui.new_text_node(pos_score, "0")
+
+		gui.set_scale(node_score, vmath.vector4(0.35,0.35,1,1))
+
+		gui.set_parent(node_bar, node_frame)
+
+		gui.set_texture(node_head, "characters")
+		gui.set_texture(node_frame, "characters")
+		gui.set_texture(node_bar, "characters")
+
+		gui.play_flipbook(node_frame, "portrait_frame")
+		gui.play_flipbook(node_bar, "portrait_slice")
+		gui.play_flipbook(node_head, "portrait_" .. C.id_to_name[id])
+		gui.animate(node_head, "position.x", end_x, go.EASING_OUTCUBIC, 1, k * 0.15)
+		gui.animate(node_frame, "position.x", end_x + padding + 16, go.EASING_OUTCUBIC, 1, k * 0.15)
+		gui.animate(node_score, "position.x", end_x + padding + 16 + padding + 10, go.EASING_OUTCUBIC, 1, k * 0.15)
+
+		portraits[id] = { head = node_head, frame = node_frame, bar = node_bar, value = 1, id = id, score = 0 }
+		portraits[id].set_value = function(self, new_value)
+			self.value = math.min(1, math.max(0, new_value))
+			local width = 30 * self.value
+			local x     = width/2 - 15
+
+			gui.animate(self.bar, "position.x", x, go.EASING_OUTCUBIC, 0.75)
+			gui.animate(self.bar, "size.x", width, go.EASING_OUTCUBIC, 0.75)
+		end
+
+		portraits[id].increase_score = function(self)
+			self.score = self.score + 1
+			gui.set_text(node_score, self.score)
+		end
+
+		portraits[id]:set_value(1)
+	end
+
+	self.portraits = portraits
+end
+
+local function remove_hud(self)
+	for k,v in pairs(self.portraits) do
+		gui.delete_node(v.head)
+		gui.delete_node(v.frame)
+		gui.delete_node(v.bar)
+	end
+
+	self.portraits = {}
+end
+
+local function handle_game_over(self, message)
+
+	local tot_height = #message * 16 + (#message-1) * 12
+	local next_y     = tot_height / 2
+	
+	for k, v in pairs(message) do
+		local node_portrait = gui.new_box_node(vmath.vector3(12,next_y,0), vmath.vector3(16,16,1))
+		local node_score    = gui.new_text_node(vmath.vector3(-12,next_y - 1,0), v.score .. " Kills")
+		
+		next_y = next_y - 16 - 12
+
+		gui.set_scale(node_score, vmath.vector3(0.4,0.4,1.0))
+		gui.set_texture(node_portrait, "characters")
+		gui.set_scale(node_portrait, vmath.vector3(1,1,1))
+		gui.play_flipbook(node_portrait, "portrait_" .. C.id_to_name[v.id])
+
+		gui.set_parent(node_score, self.container)
+		gui.set_parent(node_portrait, self.container)
+	end
+	
+	gui.animate(self.overlay, gui.PROP_COLOR, vmath.vector4(0,0,0,0.6), go.EASING_OUTCUBIC, 1)
+	gui.animate(self.container, "position.y", 180, go.EASING_OUTCUBIC, 1, 0, function(self)
+		msg.post(".","acquire_input_focus")
+	end)
+end
+
+local function handle_reset_game(self)
+	gui.animate(self.overlay, gui.PROP_COLOR, vmath.vector4(0,0,0,0), go.EASING_OUTCUBIC, 1)
+	gui.animate(self.container, "position.y", 853, go.EASING_OUTCUBIC, 1, 0)
+	msg.post("main:/main#character_select", C.game.reset)
+end
+
+function init(self)
+	self.portraits = {}
+
+	self.overlay   = gui.get_node("overlay")
+	self.container = gui.get_node("game_over_container")
+	
+	gui.set_color(self.overlay, vmath.vector4(0,0,0,0))
+end
+
+function on_input(self, action_id, action)
+	local input_table  = C.input_table_from_action(action_id, action)
+	local input_action = input_table.action_id
+	
+	if input_action == C.player.input_punch or input_action == C.player.input_kick or input_action == C.player.input_jump then
+		msg.post(".","release_input_focus")
+		handle_reset_game(self)
+	end
+end
+
+function on_message(self, message_id, message, sender)
+	if message_id == C.game.make_hud then
+		make_hud(self, message)
+	elseif message_id == C.game.game_over then
+		handle_game_over(self,message)
+	elseif message_id == C.hud.increase_score then
+		self.portraits[message.id]:increase_score()
+	elseif message_id == C.hud.set_health then
+		self.portraits[message.id]:set_value( message.value / 100 )
+	end
+end

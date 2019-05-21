@@ -1,0 +1,6 @@
+go.property("type", 0)
+go.property("id", 0)
+
+function init(self)
+	-- Nothing to see here now, but at some point I should add behaviour to the pickup I guess.
+end

@@ -1,0 +1,130 @@
+images {
+  image: "/assets/textures/mainscreen/bruce.png"
+}
+images {
+  image: "/assets/textures/mainscreen/bruceclarence.png"
+}
+images {
+  image: "/assets/textures/mainscreen/clarence.png"
+}
+images {
+  image: "/assets/textures/mainscreen/l-band.png"
+}
+images {
+  image: "/assets/textures/mainscreen/l-estreet.png"
+}
+images {
+  image: "/assets/textures/mainscreen/l-fighter.png"
+}
+images {
+  image: "/assets/textures/mainscreen/vs.png"
+}
+images {
+  image: "/assets/textures/menu_bricks.png"
+}
+images {
+  image: "/assets/textures/game_over_bg.png"
+}
+animations {
+  id: "fighter_anim"
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0000_31.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0001_30.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0002_29.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0003_28.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0004_27.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0005_26.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0006_25.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0007_24.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0008_23.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0009_22.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0010_21.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0011_20.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0012_19.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0013_18.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0014_17.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0015_16.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0016_15.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0017_14.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0018_13.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0019_12.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0020_11.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0021_10.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0022_9.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0023_8.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0024_7.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0025_6.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0026_5.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0027_4.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0028_3.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0029_2.png"
+  }
+  images {
+    image: "/assets/textures/mainscreen/fighter-anim/l-fighter_0000s_0030_1.png"
+  }
+  playback: PLAYBACK_ONCE_BACKWARD
+  fps: 24
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+margin: 2
+extrude_borders: 0
+inner_padding: 0

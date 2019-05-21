@@ -1,0 +1,22 @@
+local C = require("main.constants")
+
+function init(self)
+	msg.post(".", "acquire_input_focus")
+end
+
+function on_message(self, message_id, message, sender)
+	if message_id == C.game.start then
+		self.session = { players = message }
+		msg.post("#proxy", "load")
+	elseif message_id == C.game.unload then
+		msg.post("#proxy", "unload")
+	elseif message_id == hash("proxy_loaded") then
+		msg.post(sender, "init")
+		msg.post(sender, "enable")
+
+		for k, v in pairs(self.session.players) do
+			v.id = k
+			msg.post("game:/controller#script", C.game.spawn_player, v)
+		end
+	end
+end

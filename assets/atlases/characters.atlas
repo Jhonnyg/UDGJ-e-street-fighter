@@ -1,0 +1,220 @@
+images {
+  image: "/assets/textures/character_shadow.png"
+}
+images {
+  image: "/assets/textures/portrait_bruce.png"
+}
+images {
+  image: "/assets/textures/portrait_clarence.png"
+}
+images {
+  image: "/assets/textures/portrait_paul.png"
+}
+images {
+  image: "/assets/textures/portrait_frame.png"
+}
+images {
+  image: "/assets/textures/portrait_slice.png"
+}
+images {
+  image: "/assets/textures/particle_test.png"
+}
+animations {
+  id: "bruce_walk"
+  images {
+    image: "/assets/sprites/player_walk_Bruce-1.png"
+  }
+  images {
+    image: "/assets/sprites/player_walk_Bruce-2.png"
+  }
+  images {
+    image: "/assets/sprites/player_walk_Bruce-3.png"
+  }
+  playback: PLAYBACK_LOOP_PINGPONG
+  fps: 8
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "clarence_walk"
+  images {
+    image: "/assets/sprites/player_walk_Clar-1.png"
+  }
+  images {
+    image: "/assets/sprites/player_walk_Clar-2.png"
+  }
+  images {
+    image: "/assets/sprites/player_walk_Clar-3.png"
+  }
+  playback: PLAYBACK_LOOP_PINGPONG
+  fps: 8
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "paul_walk"
+  images {
+    image: "/assets/sprites/player_walk_Paul-1.png"
+  }
+  images {
+    image: "/assets/sprites/player_walk_Paul-2.png"
+  }
+  images {
+    image: "/assets/sprites/player_walk_Paul-3.png"
+  }
+  playback: PLAYBACK_LOOP_PINGPONG
+  fps: 8
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "bruce_idle"
+  images {
+    image: "/assets/sprites/player_walk_Bruce-1.png"
+  }
+  playback: PLAYBACK_NONE
+  fps: 8
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "clarence_idle"
+  images {
+    image: "/assets/sprites/player_walk_Clar-1.png"
+  }
+  playback: PLAYBACK_NONE
+  fps: 8
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "paul_idle"
+  images {
+    image: "/assets/sprites/player_walk_Paul-1.png"
+  }
+  playback: PLAYBACK_NONE
+  fps: 8
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "bruce_punch"
+  images {
+    image: "/assets/sprites/player_punch_Bruce_1.png"
+  }
+  images {
+    image: "/assets/sprites/player_punch_Bruce_2.png"
+  }
+  playback: PLAYBACK_ONCE_FORWARD
+  fps: 12
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "clarence_punch"
+  images {
+    image: "/assets/sprites/player_punch_Clar-1.png"
+  }
+  images {
+    image: "/assets/sprites/player_punch_Clar-2.png"
+  }
+  playback: PLAYBACK_ONCE_FORWARD
+  fps: 12
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "paul_punch"
+  images {
+    image: "/assets/sprites/player_punch_Paul_1.png"
+  }
+  images {
+    image: "/assets/sprites/player_punch_Paul_2.png"
+  }
+  playback: PLAYBACK_ONCE_FORWARD
+  fps: 12
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "bruce_kick"
+  images {
+    image: "/assets/sprites/player_kick_bruce-1.png"
+  }
+  images {
+    image: "/assets/sprites/player_kick_bruce-2.png"
+  }
+  playback: PLAYBACK_ONCE_FORWARD
+  fps: 6
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "clarence_kick"
+  images {
+    image: "/assets/sprites/player_kick_Clar-1.png"
+  }
+  images {
+    image: "/assets/sprites/player_kick_Clar-2.png"
+  }
+  playback: PLAYBACK_ONCE_FORWARD
+  fps: 6
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "paul_kick"
+  images {
+    image: "/assets/sprites/player_kick_Paul-1.png"
+  }
+  images {
+    image: "/assets/sprites/player_kick_Paul-2.png"
+  }
+  playback: PLAYBACK_ONCE_FORWARD
+  fps: 6
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "bruce_dead"
+  images {
+    image: "/assets/sprites/player_dead_Bruce-1.png"
+  }
+  playback: PLAYBACK_NONE
+  fps: 60
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "clarence_dead"
+  images {
+    image: "/assets/sprites/player_dead_Clar-1.png"
+  }
+  playback: PLAYBACK_NONE
+  fps: 60
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "paul_dead"
+  images {
+    image: "/assets/sprites/player_dead_Paul-1.png"
+  }
+  playback: PLAYBACK_NONE
+  fps: 60
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "medbox"
+  images {
+    image: "/assets/sprites/medbox_1.png"
+  }
+  playback: PLAYBACK_ONCE_FORWARD
+  fps: 50
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+margin: 2
+extrude_borders: 0
+inner_padding: 0

@@ -1,0 +1,12 @@
+images {
+  image: "/assets/textures/city_bg.png"
+}
+images {
+  image: "/assets/textures/city_shadow.png"
+}
+images {
+  image: "/assets/textures/dumpster_body.PNG"
+}
+margin: 0
+extrude_borders: 0
+inner_padding: 0

@@ -1,0 +1,189 @@
+local function draw_shadow_rt(self, rt)
+    local w = render.get_render_target_width(rt, render.BUFFER_COLOR_BIT)
+    local h = render.get_render_target_height(rt, render.BUFFER_COLOR_BIT)
+    
+    local proj = vmath.matrix4_orthographic(-self.w/2, self.w/2, -self.h/2, self.h/2, self.near, self.far)
+
+    render.set_render_target(rt)
+    render.set_depth_mask(false)
+    render.set_color_mask(true, true, true, true)
+    render.clear({[render.BUFFER_COLOR_BIT] = vmath.vector4(0,0,0,0)})
+
+    render.set_viewport(0, 0, w, h)
+    render.set_view(vmath.matrix4())
+    render.set_projection(proj)
+
+    render.disable_state(render.STATE_DEPTH_TEST)
+    render.disable_state(render.STATE_STENCIL_TEST)
+    render.disable_state(render.STATE_BLEND)
+    render.disable_state(render.STATE_CULL_FACE)
+
+    render.draw(self.shadow_gen)
+    render.set_render_target(render.RENDER_TARGET_DEFAULT)
+end
+
+local function create_shadow_rt(self,w,h)
+    local color_params = {
+        format     = render.FORMAT_RGBA,
+        width      = w,
+        height     = h,
+        min_filter = render.FILTER_NEAREST,
+        mag_filter = render.FILTER_NEAREST,
+        u_wrap     = render.WRAP_CLAMP_TO_EDGE,
+        v_wrap     = render.WRAP_CLAMP_TO_EDGE
+    }
+    
+    return render.render_target("shadow", {[render.BUFFER_COLOR_BIT] = color_params})
+end
+
+function init(self)
+    self.tile_pred     = render.predicate({"tile"})
+    self.gui_pred      = render.predicate({"gui"})
+    self.text_pred     = render.predicate({"text"})
+    self.particle_pred = render.predicate({"particle"})
+    self.shadow_gen    = render.predicate({"shadow_gen"})
+
+    self.w    = 480
+    self.h    = 360
+    self.zoom = 1
+
+    self.near = -1
+    self.far  = 1
+
+    self.shadow_rt = create_shadow_rt(self,512,512) -- square resolution due to webgl
+    
+    self.clear_color     = vmath.vector4(0, 0, 0, 1)
+    self.view            = vmath.matrix4()
+    self.camera_position = vmath.vector3()
+end
+
+local function get_view_matrix(from_position)
+    local eye    = vmath.vector3(0,1,0)
+    local offset = vmath.normalize(eye)
+    return vmath.matrix4_look_at(from_position, from_position + vmath.vector3(0,0,-1), eye )
+end
+
+local function add_shake(self,shake)
+    self.original_position = self.camera_position
+    if not self.shakes then
+        self.shakes = {}
+    end
+
+    shake.to_target = 0
+    shake.a = vmath.vector3()
+    shake.b = vmath.vector3()
+    table.insert(self.shakes, shake)
+end
+
+-- Taken from https://gist.github.com/johnnyjr/39d44e22086acc5730b96896f4c9a94b
+local function update_shake(self,dt)
+    local camera_pos=self.original_position or self.camera_position
+
+    self.shake=vmath.vector3()
+    if self.shakes and next(self.shakes) then
+        for i,shake in pairs(self.shakes) do
+            shake.time=shake.time-dt
+            shake.to_target=shake.to_target-dt
+            if shake.to_target<=0 then
+                shake.a=vmath.vector3(shake.b)
+                shake.b=vmath.vector3((math.random()-0.5)*shake.x,(math.random()-0.5)*shake.y, 0)
+                shake.to_target=math.min(shake.time, shake.speed)
+                shake.to_target_max=shake.to_target
+            end
+            self.shake=self.shake+vmath.lerp(shake.to_target/shake.to_target_max, shake.b, shake.a)
+            if shake.time<=0 then
+                table.remove(self.shakes, i)
+            end
+        end
+    elseif self.original_position then
+        camera_pos=self.original_position
+        self.original_position=nil
+    end
+
+    self.camera_position = camera_pos+self.shake
+end
+
+function update(self, dt)
+    update_shake(self,dt)
+
+    if self.dirty_shadows then
+        draw_shadow_rt(self, self.shadow_rt)
+        self.dirty_shadows = false
+    end
+    
+    render.set_depth_mask(true)
+    render.set_stencil_mask(0xff)
+    render.clear({[render.BUFFER_COLOR_BIT] = self.clear_color, [render.BUFFER_DEPTH_BIT] = 1, [render.BUFFER_STENCIL_BIT] = 0})
+    
+    render.set_viewport(0, 0, render.get_window_width(), render.get_window_height())
+    render.set_view(self.view)
+
+    -- render.set_depth_mask(false)
+    -- render.enable_state(render.STATE_DEPTH_TEST)
+    render.disable_state(render.STATE_DEPTH_TEST)
+    render.disable_state(render.STATE_STENCIL_TEST)
+    render.enable_state(render.STATE_BLEND)
+    render.set_blend_func(render.BLEND_SRC_ALPHA, render.BLEND_ONE_MINUS_SRC_ALPHA)
+    render.disable_state(render.STATE_CULL_FACE)
+
+    local w = self.w * self.zoom
+    local h = self.h * self.zoom
+
+    local proj = vmath.matrix4_orthographic(-w/2, w/2, -h/2, h/2, self.near, self.far)
+    
+    render.set_projection(proj)
+
+    render.enable_texture(1, self.shadow_rt, render.BUFFER_COLOR_BIT)
+    render.draw(self.tile_pred)
+    render.draw(self.particle_pred)
+    render.disable_texture(1)
+    
+    render.draw_debug3d()
+
+    -- render GUI
+    --
+    render.set_view(get_view_matrix(self.camera_position))
+
+    if self.is_game then
+        render.set_projection(vmath.matrix4_orthographic(0, w, 0, h, self.near, self.far))
+    else
+        render.set_projection(vmath.matrix4_orthographic(0, render.get_window_width(), 0, render.get_window_height(), -1, 1))
+    end
+
+    render.enable_state(render.STATE_STENCIL_TEST)
+    render.draw(self.gui_pred)
+    render.draw(self.text_pred)
+    render.disable_state(render.STATE_STENCIL_TEST)
+end
+
+function on_message(self, message_id, message)
+    if message_id == hash("clear_color") then
+        self.clear_color = message.color
+    elseif message_id == hash("set_view_projection") then
+        self.view = message.view
+        self.projection = message.projection
+    elseif message_id == hash("use_camera_projection") then
+        self.projection_fn = function() return self.projection or vmath.matrix4() end
+    elseif message_id == hash("use_stretch_projection") then
+        self.near = message.near or -1
+        self.far = message.far or 1
+        self.projection_fn = stretch_projection
+    elseif message_id == hash("use_fixed_projection") then
+        self.near = message.near or -1
+        self.far = message.far or 1
+        self.zoom = message.zoom or 1
+        self.projection_fn = fixed_projection
+    elseif message_id == hash("use_fixed_fit_projection") then
+        self.near = message.near or -1
+        self.far = message.far or 1
+        self.projection_fn = fixed_fit_projection
+    elseif message_id == hash("set_is_game") then
+        self.is_game = message.value
+    elseif message_id == hash("set_zoom") then
+        self.zoom = message.zoom
+    elseif message_id == hash("render_shadow") then
+        self.dirty_shadows = true
+    elseif message_id == hash("render_shake") then
+        add_shake(self, message)
+    end
+end

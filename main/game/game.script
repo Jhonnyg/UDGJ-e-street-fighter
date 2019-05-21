@@ -1,0 +1,261 @@
+local C = require("main.constants")
+local helpers = require("main.helpers")
+
+go.property("camera_zoom", 0.5)
+
+local function spawn_player(self,player)
+	local player_spawn = self.player_walk_from[player.id] -- self.player_spawns[player.id]
+	local player_obj   = factory.create("/factories#player",player_spawn,nil,player)
+	
+	self.players[player.id] = player_obj
+
+	self.player_data[player.id] = { health = 100, score = 0 }
+
+	msg.post(player_obj, C.player.walk_to, {position = self.player_walk_to[player.id]})
+end
+
+local function spawn_pickup(self,type)
+	if self.is_game_over then
+		return
+	end
+	
+	local spawn_ix  = math.random(1, #self.pickup_spawns)
+	local spawn_pos = self.pickup_spawns[spawn_ix].pos
+
+	print("Spawning pickup " .. type)
+
+	local ix = -1
+	for k, v in pairs(self.dynamic_objects) do
+		if v == nil then
+			ix = k
+			break
+		end
+	end
+
+	if ix == -1 then
+		ix = #self.dynamic_objects + 1
+	end
+
+	local pickup_obj = factory.create("/factories#pickup",spawn_pos,nil,{type=type, id=ix})
+	self.dynamic_objects[ix] = pickup_obj
+end
+
+local function spawn_random_pickup(self)
+	local type = math.random(1, #C.level.pickup_lut)
+	return spawn_pickup(self, C.level.pickups[C.level.pickup_lut[type]])
+end
+
+local function notify_start(self)
+	for k, v in pairs(self.players) do
+		msg.post(v, C.player.resume)
+	end
+	
+	msg.post("/hud", C.game.make_hud, self.players)
+end
+
+local function get_spawn_position(self)
+	local num_spawns = #self.player_spawns
+	local spawn_ix = math.random(1,num_spawns)
+	return self.player_spawns[spawn_ix]
+end
+
+function init(self)
+	print("Starting game..")
+	self.dynamic_objects = {}
+	self.players       = {}
+	self.player_data   = {}
+	self.player_spawns = {
+		go.get_position("/level/spawn_1"),
+		go.get_position("/level/spawn_2"),
+		go.get_position("/level/spawn_3"),
+		go.get_position("/level/spawn_4")}
+
+	self.player_walk_to = {
+		go.get_position("/level/walk_to_1"),
+		go.get_position("/level/walk_to_2"),
+		go.get_position("/level/walk_to_3"),
+		go.get_position("/level/walk_to_4")}
+
+	self.player_walk_from = {
+		go.get_position("/level/walk_from_1"),
+		go.get_position("/level/walk_from_2"),
+		go.get_position("/level/walk_from_3"),
+		go.get_position("/level/walk_from_4")}
+
+	self.pickup_spawns = {
+		{pos = go.get_position("/level/pickup_1"), taken = false},
+		{pos = go.get_position("/level/pickup_2"), taken = false},
+		{pos = go.get_position("/level/pickup_3"), taken = false}
+	}
+
+	msg.post("/level/controller", C.level.get_dynamic_objects)
+	msg.post("@render:", "render_shadow")
+	msg.post("@render:", "set_is_game", {value=true})
+
+	self.pre_game = true
+
+	msg.post("@render:", "set_zoom", {zoom = self.camera_zoom})
+	go.animate("#script", "camera_zoom", go.PLAYBACK_ONCE_FORWARD, 1, go.EASING_INOUTCUBIC, 2, 4, function(self)
+		notify_start(self)
+		self.pre_game = false
+	end)
+
+	spawn_random_pickup(self)
+end
+
+function update(self, dt)
+	if self.pre_game then
+		msg.post("@render:", "set_zoom", {zoom = self.camera_zoom})
+	end
+	
+	local z_sort = {}
+	local y_offset = 18 -- feet hitbox offset
+
+	for k, v in pairs(self.dynamic_objects) do
+		table.insert(z_sort, {obj=v, pos=go.get_position(v)})
+	end
+
+	for k, v in pairs(self.players) do
+		local pos = go.get_position(v)
+		pos.y = pos.y - y_offset
+		
+		table.insert(z_sort, {obj=v, pos=pos, is_player = true})
+	end
+
+	local z_begin = -0.5
+	local z_end   = -0.1
+	local z_step  = (z_end - z_begin) / #z_sort
+
+	local i = 0
+	for k,v in helpers.spairs(z_sort, function(t,a,b) return t[b].pos.y < t[a].pos.y end) do
+		v.pos.z = z_begin + i*z_step
+
+		if v.is_player then
+			v.pos.y = v.pos.y + y_offset
+		end
+		
+		go.set_position(v.pos,v.obj)
+		i = i + 1
+	end
+end
+
+local function respawn_player(self, player_id)
+	self.player_data[player_id].waiting_for_respawn = true
+	msg.post(self.players[player_id], C.player.died)
+
+	if not self.is_game_over then
+		timer.delay(C.game.respawn_time, false, function()
+			msg.post(self.players[player_id], C.player.respawned, { position = get_spawn_position(self) })
+			msg.post("/hud#game", C.hud.set_health, { id = player_id, value = 100 })
+			self.player_data[player_id].waiting_for_respawn = false
+			self.player_data[player_id].health              = 100
+		end)
+	end
+end
+
+local function handle_pickup(self,message)
+	local pickup      = message.obj
+	local player      = message.id
+	local pickup_url  = msg.url("game", pickup, "pickup")
+	local pickup_id   = go.get(pickup_url, "id")
+	local pickup_type = go.get(pickup_url, "type")
+
+	if not self.dynamic_objects[pickup_id] then
+		print("Pickup " .. pickup_id .. " probably taken")
+		return
+	end
+
+	if pickup_type == 0 then
+		if self.player_data[player].health < 100 then
+			print("Player took health")
+			self.player_data[player].health = math.min(100, self.player_data[player].health + C.game.pickup_health_value)
+			msg.post("/hud#game", C.hud.set_health, { id = player, value = self.player_data[player].health })
+
+			go.delete(self.dynamic_objects[pickup_id])
+			self.dynamic_objects[pickup_id] = nil
+
+			timer.delay(10, false, function(self)
+				spawn_random_pickup(self)
+			end)
+		end
+	end
+end
+
+local function handle_hit(self, message, type)
+	local player_pos = go.get_position(self.players[message.id])
+	
+	for k, v in pairs(self.players) do
+		if k ~= message.id and not self.player_data[k].waiting_for_respawn then
+			local p = go.get_position(v)
+
+			local d = p.x - player_pos.x
+			local h = p.y - player_pos.y
+
+			local is_facing = message.face_direction < 0 and d < 0 or message.face_direction > 0 and d > 0
+
+			local limit_x = C.player.punch_limit_distance
+			local limit_y = C.player.punch_limit_height
+			local hit_dmg = C.game.punch_value
+			local hit_msg = C.player.got_punch
+
+			if type == C.player.hit_type.KICK then
+				limit_x = C.player.kick_limit_distance
+				limit_y = C.player.kick_limit_height
+				hit_dmg = C.game.kick_value
+				hit_msg = C.player.got_kick
+			end
+			
+			if is_facing and math.abs(d) < limit_x and math.abs(h) < limit_y then
+
+				self.player_data[k].health = self.player_data[k].health - hit_dmg
+
+				msg.post(v, hit_msg, { direction = (d/math.abs(d)) })
+				msg.post("/hud#game", C.hud.set_health, { id = k, value = self.player_data[k].health })
+				
+				if self.player_data[k].health <= 0 then
+					self.player_data[message.id].score = self.player_data[message.id].score + 1
+					msg.post("/hud#game", C.hud.increase_score, { id = message.id })
+
+					if self.player_data[message.id].score >= C.game.win_condition then
+						self.is_game_over = true
+					end
+
+					respawn_player(self,k)
+				end
+			end
+		end
+	end
+
+	if self.is_game_over then
+
+		local score = {}
+
+		for k, v in pairs(self.player_data) do
+			score[k]    = v
+			score[k].id = k
+		end
+
+		helpers.spairs(score, function(t,a,b) return t[b].score > t[a].score end)
+		msg.post("/hud#game", C.game.game_over, score)
+
+		for k, v in pairs(self.players) do
+			msg.post(v, C.game.game_over)
+		end
+	end
+end
+
+function on_message(self, message_id, message, sender)
+	if message_id == C.game.spawn_player then
+		spawn_player(self, message)
+	elseif message_id == C.level.get_dynamic_objects then
+		for k, v in pairs(message) do
+			table.insert(self.dynamic_objects, go.get_id("/level/" .. v))
+		end
+	elseif message_id == C.player.did_kick then
+		handle_hit(self, message, C.player.hit_type.KICK)
+	elseif message_id == C.player.did_punch then
+		handle_hit(self, message, C.player.hit_type.PUNCH)
+	elseif message_id == C.player.got_pickup then
+		handle_pickup(self,message)
+	end
+end

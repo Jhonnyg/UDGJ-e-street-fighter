@@ -1,0 +1,24 @@
+[bootstrap]
+main_collection = /main/main.collectionc
+render = /render/default.renderc
+
+[script]
+shared_state = 1
+
+[display]
+width = 1024
+height = 768
+display_profiles = /builtins/render/default.display_profilesc
+high_dpi = 0
+fullscreen = 0
+
+[project]
+title = e-street-fighter
+
+[graphics]
+default_texture_min_filter = nearest
+default_texture_mag_filter = nearest
+
+[physics]
+debug = 0
+

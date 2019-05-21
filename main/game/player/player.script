@@ -1,0 +1,310 @@
+local C = require("main.constants")
+
+go.property("type", 0)
+go.property("id", 0)
+go.property("input_type", 0)
+go.property("input_id", 0)
+go.property("is_jumping", false)
+go.property("face_direction", 1)
+
+local function play_animation(self,name,cb)	
+	local str = C.id_to_name[self.id] .. "_" .. name
+
+	if self.current_animation == str then
+		return
+	end
+	
+	self.current_animation = str
+	sprite.play_flipbook("#sprite", hash(str), cb)
+end
+
+function init(self)	
+	if self.id == 2 or self.id == 4 then
+		sprite.set_hflip("#sprite", true)
+		self.face_direction = -1
+	end
+
+	self.view_pos_delta     = vmath.vector3()
+	self.shadow             = factory.create("/factories#shadow", go.get_position())
+	self.is_in_shadow_depth = 0
+	self.shadow_group       = { hash("shadow") }
+	self.frame              = 0
+	
+	msg.post("#collisionobject_plateau", "disable")
+end
+
+local function player_walk(self, dx, dy)
+	self.view_pos_delta.x = self.view_pos_delta.x + dx
+	self.view_pos_delta.y = self.view_pos_delta.y + dy
+end
+
+local function handle_input(self)
+
+	if self.is_getting_hit then
+		return
+	end
+
+	if self.input_punch then
+		if self.input_punch.pressed and not self.is_punching then
+			self.is_punching = true
+		end
+	elseif self.input_kick then
+		if self.input_kick.pressed and not self.is_kicking then
+			--print(self.frame, "Is kicking")
+			self.is_kicking = true
+		end
+	else
+		if self.input_jump then
+			if self.input_jump.pressed and not self.is_jumping then
+				self.is_jumping = true
+				self.jump_y = go.get_position().y
+
+				msg.post("#collisionobject_ground", "disable")
+				msg.post("#collisionobject_plateau", "enable")
+
+				go.animate(".", "position.y", go.PLAYBACK_ONCE_PINGPONG, self.jump_y + C.player.jump_height, go.EASING_LINEAR, C.player.jump_speed, 0, function(self)
+					self.is_jumping = false
+					msg.post("#collisionobject_ground", "enable")
+				end)
+				
+				go.animate(self.shadow, "scale.x", go.PLAYBACK_ONCE_PINGPONG, 0.5, go.EASING_LINEAR, C.player.jump_speed)
+				go.animate(self.shadow, "scale.y", go.PLAYBACK_ONCE_PINGPONG, 0.5, go.EASING_LINEAR, C.player.jump_speed)
+			end	
+		end
+		
+		if self.input_left then
+			sprite.set_hflip("#sprite", true)
+			self.face_direction = -1
+			
+			player_walk(self, -C.player.walk_speed, 0)
+			self.should_walk = true
+			self.is_walking = true
+		elseif self.input_right then
+			sprite.set_hflip("#sprite", false)
+			self.face_direction = 1
+
+			player_walk(self, C.player.walk_speed, 0)
+			self.should_walk = true
+			self.is_walking = true
+		end
+
+		if self.input_up then
+			player_walk(self, 0, C.player.walk_speed)
+
+			self.should_walk = true
+			self.is_walking = true
+		elseif self.input_down then
+			player_walk(self, 0, -C.player.walk_speed)
+
+			self.should_walk = true
+			self.is_walking = true
+		end
+	end
+	
+	self.input_left  = nil
+	self.input_right = nil
+	self.input_up    = nil
+	self.input_down  = nil
+	self.input_jump  = nil
+	self.input_punch = nil
+	self.input_kick  = nil
+end
+
+function handle_animations(self)
+	if self.is_punching then
+		play_animation(self,"punch", function(self)
+			play_animation(self,"idle")
+			self.is_punching = false
+			self.is_punching_finished = true
+		end)
+	elseif self.is_kicking then
+		play_animation(self,"kick", function(self)
+			play_animation(self,"idle")
+			self.is_kicking = false
+			self.is_kicking_finished = true
+		end)
+	end
+	
+	if self.should_walk and not (self.is_punching or self.is_kicking) then
+		play_animation(self,"walk")
+		self.should_walk = false
+	end
+
+	if not self.is_walking and not (self.is_punching or self.is_kicking) then
+		play_animation(self,"idle")
+	end
+end
+
+function handle_collision(self, collision)
+	local move_vec = collision.normal * collision.distance
+	local p = go.get_position()
+	go.set_position(p + move_vec)
+end
+
+function handle_plateau(self,message)		
+	if self.is_jumping then
+		go.cancel_animations(".", "position.y")
+		self.is_jumping = false
+	end
+	
+	local p = go.get_position()
+end
+
+function handle_step(self,message)
+	self.is_in_step = true
+end
+
+function handle_dead(self)
+	play_animation(self, "dead")
+	self.is_dead = true
+end
+
+function handle_game_over(self)	
+	self.game_over = true
+
+	if not self.is_dead then
+		play_animation(self,"idle")
+	end
+end
+
+function handle_respawn(self, message)
+	self.is_dead = false
+	go.set_position(message.position)
+	play_animation(self,"idle")
+end
+
+function update(self, dt)
+	self.frame = self.frame + 1
+
+	if self.is_dead then
+		return
+	end
+	
+	local p_now = go.get_position()
+	
+	if self.walk_to then
+		local dir = self.walk_to - p_now
+		local len = vmath.length(dir)
+		local nor = vmath.normalize(dir)
+
+		if len > 0.5 then
+			player_walk(self, nor.x * C.player.walk_speed * 0.5, nor.y * C.player.walk_speed * 0.5)
+			self.is_walking = true
+		else
+			self.walk_to = nil
+		end
+	end
+
+	if not self.game_over then
+		handle_input(self)
+	end
+	
+	handle_animations(self)
+
+	local p = p_now + self.view_pos_delta * dt
+	local p_shadow = vmath.vector3(p)
+
+	if self.is_jumping then
+		p_shadow.y = self.jump_y
+	end
+	if self.is_in_shadow and not self.is_in_shadow_prev then
+		go.animate("#sprite", "tint.w", go.PLAYBACK_ONCE_FORWARD, 0, go.EASING_LINEAR, 0.15)
+	end
+
+	if self.is_in_shadow_prev and not self.is_in_shadow then
+		go.animate("#sprite", "tint.w", go.PLAYBACK_ONCE_FORWARD, 1, go.EASING_LINEAR, 0.15)
+	end
+
+	if self.is_punching_finished then
+		msg.post("/controller#script", C.player.did_punch, {id = self.id, face_direction = self.face_direction})
+		self.is_punching_finished = false
+	end
+
+	if self.is_kicking_finished then
+		msg.post("/controller#script", C.player.did_kick, {id = self.id, face_direction = self.face_direction})
+		self.is_kicking_finished = false
+	end
+
+	self.is_in_shadow_prev = self.is_in_shadow
+
+	go.set_position(p)
+	go.set_position(p_shadow + vmath.vector3(0,-20, p.z + 0.4), self.shadow)
+	
+	self.view_pos_delta  = vmath.vector3()
+	self.is_walking = false
+	self.is_in_shadow = false
+	self.is_in_shadow_depth = 0
+end
+
+function on_message(self, message_id, message, sender)
+	if message.group == hash("shadow") then
+		if not self.is_in_shadow and self.is_jumping then
+			return
+		end
+		
+		if message_id == hash("contact_point_response") then
+			self.is_in_shadow_depth = math.max(self.is_in_shadow_depth, message.distance)
+		end
+		
+		self.is_in_shadow = true
+	elseif message.group == hash("pickup") then
+		msg.post("/controller#script", C.player.got_pickup, {obj=message.other_id, id=self.id})
+	elseif message.group == hash("step") and message_id == hash("contact_point_response") then
+		handle_step(self,message)
+	elseif message.group == hash("plateau") then
+		handle_plateau(self,message)
+	elseif message.group == hash("wall") then
+		if message_id == hash("contact_point_response") then
+			handle_collision(self, message)
+		end
+	elseif message_id == C.player.walk_to then
+		play_animation(self,"walk")
+		self.walk_to = message.position
+	elseif message_id == C.player.resume then
+		if self.type == C.player.TYPE_HUMAN then
+			msg.post(".", "acquire_input_focus")
+		end
+	elseif message_id == C.game.game_over then
+		handle_game_over(self)
+	elseif message_id == C.player.died then
+		handle_dead(self)
+	elseif message_id == C.player.respawned then
+		handle_respawn(self, message)
+	elseif message_id == C.player.got_punch or message_id == C.player.got_kick then
+		local p = go.get_position()
+		self.is_getting_hit = true
+		go.animate(".", "position.x", go.PLAYBACK_ONCE_FORWARD, p.x + 15 * message.direction, go.EASING_OUTCUBIC, 0.25, 0, function(self)
+			self.is_getting_hit = false
+		end)
+	end
+end
+
+function on_input(self, action_id, action)
+	local input_table  = C.input_table_from_action(action_id, action)
+	local input_action = input_table.action_id
+
+	if input_table.id ~= self.input_id then
+		return
+	end
+
+	if action.value and action.value < 0.35 then
+		return
+	end
+	
+	if input_action == C.player.input_left then
+		self.input_left = action
+	elseif input_action == C.player.input_right then
+		self.input_right = action
+	elseif input_action == C.player.input_up then
+		self.input_up = action
+	elseif input_action == C.player.input_down then
+		self.input_down = action
+	elseif input_action == C.player.input_jump then
+		self.input_jump = action
+	elseif input_action == C.player.input_punch then
+		self.input_punch = action
+	elseif input_action == C.player.input_kick then
+		self.input_kick = action
+	end
+end
+

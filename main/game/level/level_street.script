@@ -1,0 +1,11 @@
+local C = require("main.constants")
+
+function init(self)
+	self.dynamic_objects = {"dumpster"}
+end
+
+function on_message(self, message_id, message, sender)
+	if message_id == C.level.get_dynamic_objects then
+		msg.post(sender, C.level.get_dynamic_objects, self.dynamic_objects)
+	end
+end
